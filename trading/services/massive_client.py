@@ -418,3 +418,38 @@ class MassiveAPIClient:
         # Return closest price
         closest_row = within_tolerance.loc[within_tolerance["date_diff"].idxmin()]
         return float(closest_row["close"])
+
+    def get_price_on_date(
+        self, ticker: str, target_date: datetime, tolerance_days: int = 7
+    ) -> float | None:
+        start_date = target_date - timedelta(days=tolerance_days)
+        end_date = target_date + timedelta(days=tolerance_days)
+
+        try:
+            data = self.fetch_stock_data(
+                ticker=ticker,
+                start_date=start_date.strftime("%Y-%m-%d"),
+                end_date=end_date.strftime("%Y-%m-%d"),
+            )
+
+            if not data:
+                return None
+
+            # Find the closest date
+            target_date_obj = (
+                target_date.date() if isinstance(target_date, datetime) else target_date
+            )
+
+            closest_data = min(
+                data, key=lambda x: abs((x["date"] - target_date_obj).days)
+            )
+
+            return float(closest_data["close"])
+
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error getting price for {ticker} on {target_date}: {e}")
+            return None
+
+
+def get_massive_client() -> MassiveAPIClient:
+    return MassiveAPIClient()
